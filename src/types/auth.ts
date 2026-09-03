@@ -35,3 +35,17 @@ export interface LoginRequest {
 export interface RefreshTokenRequest {
   refreshToken: string;
 }
+
+export interface UpdateProfileRequest {
+  fullName?: string;
+  phoneNumber?: string;
+  status?: string;
+  profileImageUrl?: string;
+}
+
+export interface PresignedUrlResponse {
+  uploadUrl: string;
+  fileUrl: string;
+  key: string;
+  expiresInSeconds: number;
+}
