@@ -12,6 +12,7 @@ import {
   View,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system/legacy';
 import { ScreenWrapper } from '../../components/ScreenWrapper';
 import { Avatar } from '../../components/Avatar';
 import { Button } from '../../components/Button';
@@ -118,20 +119,26 @@ export default function ProfileScreen({
         fileType: mimeType,
       }).unwrap();
 
-      // 2. Fetch the image file as a Blob/ArrayBuffer
-      const response = await fetch(asset.uri);
-      const blob = await response.blob();
-
-      // 3. Upload directly to S3 via PUT
-      await fetch(uploadUrl, {
-        method: 'PUT',
-        body: blob,
-        headers: {
-          'Content-Type': mimeType,
+      // 2. Upload directly to storage via native binary uploadAsync
+      const uploadResponse = await FileSystem.uploadAsync(
+        uploadUrl,
+        asset.uri,
+        {
+          httpMethod: 'PUT',
+          uploadType: FileSystem.FileSystemUploadType.BINARY_CONTENT,
+          headers: {
+            'Content-Type': mimeType,
+          },
         },
-      });
+      );
 
-      // 4. Update user profile with the new file URL
+      if (uploadResponse.status < 200 || uploadResponse.status >= 300) {
+        throw new Error(
+          `Storage upload failed with HTTP status ${uploadResponse.status}`,
+        );
+      }
+
+      // 3. Update user profile with the new file URL
       const updatedUser = await updateProfileApi({
         profileImageUrl: fileUrl,
       }).unwrap();
@@ -142,7 +149,7 @@ export default function ProfileScreen({
       console.warn('Avatar upload failed:', err);
       Alert.alert(
         'Upload Failed',
-        err?.data?.message || 'Could not upload profile photo. Please try again.',
+        err?.data?.message || err?.message || 'Could not upload profile photo. Please try again.',
       );
     } finally {
       setIsUploadingAvatar(false);
