@@ -7,7 +7,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -26,6 +25,35 @@ import {
   useGetAvatarUploadUrlMutation,
   useUpdateProfileMutation,
 } from '../../services/usersApi';
+
+interface InfoRowProps {
+  label: string;
+  value: string;
+  isEditable?: boolean;
+  onPress?: () => void;
+}
+
+const InfoRow: React.FC<InfoRowProps> = ({
+  label,
+  value,
+  isEditable = true,
+  onPress,
+}) => (
+  <TouchableOpacity
+    style={styles.infoRow}
+    onPress={onPress}
+    disabled={!isEditable}
+    activeOpacity={0.7}
+  >
+    <View style={styles.infoLeft}>
+      <Text style={styles.infoLabel}>{label}</Text>
+      <Text style={styles.infoValue} numberOfLines={1}>
+        {value || 'Not set'}
+      </Text>
+    </View>
+    {isEditable && <Text style={styles.infoEditChevron}>›</Text>}
+  </TouchableOpacity>
+);
 
 interface SettingRowProps {
   icon: string;
@@ -93,7 +121,7 @@ export default function ProfileScreen({
       if (!permissionResult.granted) {
         Alert.alert(
           'Permission Required',
-          'Please allow access to your photos to upload a profile avatar.',
+          'Please allow access to your photo library to choose an avatar.',
         );
         return;
       }
@@ -119,7 +147,7 @@ export default function ProfileScreen({
         fileType: mimeType,
       }).unwrap();
 
-      // 2. Upload directly to storage via native binary uploadAsync
+      // 2. Upload directly to Cloudflare R2 via native FileSystem uploadAsync
       const uploadResponse = await FileSystem.uploadAsync(
         uploadUrl,
         asset.uri,
@@ -149,7 +177,9 @@ export default function ProfileScreen({
       console.warn('Avatar upload failed:', err);
       Alert.alert(
         'Upload Failed',
-        err?.data?.message || err?.message || 'Could not upload profile photo. Please try again.',
+        err?.data?.message ||
+          err?.message ||
+          'Could not upload profile photo. Please try again.',
       );
     } finally {
       setIsUploadingAvatar(false);
@@ -222,111 +252,118 @@ export default function ProfileScreen({
         >
           <Text style={styles.backIcon}>‹</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Profile & Settings</Text>
-        <TouchableOpacity onPress={handleOpenEditModal} activeOpacity={0.7}>
-          <Text style={styles.editHeaderBtn}>Edit</Text>
-        </TouchableOpacity>
+        <Text style={styles.headerTitle}>My Profile</Text>
+        <View style={styles.headerSpacer} />
       </View>
 
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* User Card with Interactive Avatar */}
-        <View style={styles.profileCard}>
-          <View style={styles.avatarWrapper}>
+        {/* Hero Profile Card */}
+        <View style={styles.heroCard}>
+          <TouchableOpacity
+            style={styles.avatarWrapper}
+            onPress={handlePickAvatar}
+            disabled={isUploadingAvatar}
+            activeOpacity={0.8}
+          >
             <Avatar
               name={user?.full_name || 'Pulse User'}
               imageUrl={user?.profile_image_url}
-              size={96}
+              size={104}
               isOnline={true}
             />
 
-            {/* Camera / Edit Overlay Badge */}
-            <TouchableOpacity
-              style={styles.cameraBadge}
-              onPress={handlePickAvatar}
-              disabled={isUploadingAvatar}
-              activeOpacity={0.8}
-            >
+            {/* Camera Overlay Badge */}
+            <View style={styles.cameraBadge}>
               {isUploadingAvatar ? (
-                <ActivityIndicator size="small" color={Colors.textPrimary} />
+                <ActivityIndicator size="small" color="#FFFFFF" />
               ) : (
                 <Text style={styles.cameraIcon}>📷</Text>
               )}
-            </TouchableOpacity>
-          </View>
-
-          {/* Explicit Change Photo Button */}
-          <TouchableOpacity
-            style={styles.changePhotoBtn}
-            onPress={handlePickAvatar}
-            disabled={isUploadingAvatar}
-            activeOpacity={0.7}
-          >
-            {isUploadingAvatar ? (
-              <ActivityIndicator size="small" color={Colors.secondaryLight} />
-            ) : (
-              <Text style={styles.changePhotoText}>📷 Change Photo</Text>
-            )}
+            </View>
           </TouchableOpacity>
+
+          <Text style={styles.changeHint}>Tap photo to change</Text>
 
           <Text style={styles.userName}>{user?.full_name || 'Pulse User'}</Text>
           <Text style={styles.userEmail}>{user?.email || 'user@pulse.chat'}</Text>
 
-          {Boolean(user?.phone_number) && (
-            <Text style={styles.userPhone}>{user?.phone_number}</Text>
-          )}
-
-          <View style={styles.statusBadge}>
-            <Text style={styles.statusText}>
-              {user?.status || '⚡ Active on Pulse'}
-            </Text>
-          </View>
-
-          {/* Prominent Edit Profile Button */}
+          {/* Status Note Pill */}
           <TouchableOpacity
-            style={styles.editProfileBtn}
+            style={styles.statusBadge}
             onPress={handleOpenEditModal}
-            activeOpacity={0.8}
+            activeOpacity={0.7}
           >
-            <Text style={styles.editProfileBtnText}>✏️ Edit Profile Details</Text>
+            <Text style={styles.statusPulseDot}>🟢</Text>
+            <Text style={styles.statusText} numberOfLines={1}>
+              {user?.status || 'Active on Pulse'}
+            </Text>
           </TouchableOpacity>
         </View>
 
-        {/* Settings Groups */}
+        {/* Account Details Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionHeader}>ACCOUNT & SECURITY</Text>
-          <SettingRow
-            icon="✏️"
-            title="Edit Profile"
-            subtitle="Change name, status message, and phone"
-            onPress={handleOpenEditModal}
-          />
-          <SettingRow
-            icon="🔒"
-            title="Privacy & Security"
-            subtitle="Two-factor authentication, end-to-end encryption"
-          />
-          <SettingRow
-            icon="🔔"
-            title="Notifications & Sounds"
-            subtitle="Message previews, call tones"
-          />
-          <SettingRow
-            icon="🎨"
-            title="Appearance"
-            subtitle="Dark Mode (Default), Chat Wallpapers"
-          />
+          <View style={styles.sectionHeaderRow}>
+            <Text style={styles.sectionHeader}>PERSONAL INFORMATION</Text>
+            <TouchableOpacity onPress={handleOpenEditModal} activeOpacity={0.7}>
+              <Text style={styles.sectionEditBtn}>Edit</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.cardGroup}>
+            <InfoRow
+              label="Full Name"
+              value={user?.full_name || ''}
+              onPress={handleOpenEditModal}
+            />
+            <View style={styles.divider} />
+            <InfoRow
+              label="Status Message"
+              value={user?.status || ''}
+              onPress={handleOpenEditModal}
+            />
+            <View style={styles.divider} />
+            <InfoRow
+              label="Phone Number"
+              value={user?.phone_number || ''}
+              onPress={handleOpenEditModal}
+            />
+            <View style={styles.divider} />
+            <InfoRow
+              label="Email Address"
+              value={user?.email || ''}
+              isEditable={false}
+            />
+          </View>
         </View>
 
+        {/* Preferences Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionHeader}>SUPPORT & ABOUT</Text>
-          <SettingRow icon="❓" title="Help & Feedback" />
-          <SettingRow icon="ℹ️" title="About Pulse" subtitle="Version 1.0.0" />
+          <Text style={styles.sectionHeader}>SETTINGS</Text>
+          <View style={styles.cardGroup}>
+            <SettingRow
+              icon="🔒"
+              title="Privacy & Security"
+              subtitle="Two-factor auth, blocked users"
+            />
+            <View style={styles.divider} />
+            <SettingRow
+              icon="🔔"
+              title="Notifications"
+              subtitle="Sounds, previews, alerts"
+            />
+            <View style={styles.divider} />
+            <SettingRow
+              icon="🎨"
+              title="Appearance"
+              subtitle="Dark Slate (Default)"
+            />
+          </View>
         </View>
 
-        {/* Logout Section */}
+        {/* Log Out */}
         <View style={styles.logoutContainer}>
           <Button
             title="Log Out"
@@ -338,7 +375,7 @@ export default function ProfileScreen({
         </View>
       </ScrollView>
 
-      {/* Edit Profile Modal */}
+      {/* Edit Profile Bottom Sheet Modal */}
       <Modal
         visible={isEditModalVisible}
         animationType="slide"
@@ -370,7 +407,7 @@ export default function ProfileScreen({
 
               <Input
                 label="Phone Number"
-                placeholder="+1 555-0199"
+                placeholder="+91 9876543210"
                 keyboardType="phone-pad"
                 value={editPhoneNumber}
                 onChangeText={setEditPhoneNumber}
@@ -378,7 +415,7 @@ export default function ProfileScreen({
 
               <Input
                 label="Status Message"
-                placeholder="What's on your mind?"
+                placeholder="What's your current status?"
                 value={editStatus}
                 onChangeText={setEditStatus}
                 maxLength={120}
@@ -455,121 +492,154 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     ...Typography.title,
+    fontSize: 17,
   },
-  editHeaderBtn: {
-    color: Colors.secondaryLight,
-    fontSize: 15,
-    fontWeight: '600',
-    paddingHorizontal: Spacing.xs,
+  headerSpacer: {
+    width: 36,
   },
   scrollContent: {
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.lg,
   },
-  profileCard: {
+  heroCard: {
     alignItems: 'center',
     backgroundColor: Colors.surface,
     borderRadius: Radii.xl,
-    padding: Spacing.xl,
+    paddingVertical: Spacing.xl,
+    paddingHorizontal: Spacing.lg,
     marginBottom: Spacing.xl,
     borderWidth: 1,
     borderColor: Colors.border,
   },
   avatarWrapper: {
     position: 'relative',
+    marginBottom: Spacing.xs,
   },
   cameraBadge: {
     position: 'absolute',
-    bottom: -2,
-    right: -2,
-    width: 32,
-    height: 32,
+    bottom: 2,
+    right: 2,
+    width: 34,
+    height: 34,
     borderRadius: Radii.full,
     backgroundColor: Colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2.5,
     borderColor: Colors.surface,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
   },
   cameraIcon: {
-    fontSize: 14,
+    fontSize: 15,
   },
-  changePhotoBtn: {
-    marginTop: Spacing.sm,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: 6,
-    borderRadius: Radii.full,
-    backgroundColor: Colors.surfaceLight,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  changePhotoText: {
+  changeHint: {
     color: Colors.secondaryLight,
     fontSize: 12,
-    fontWeight: '600',
-  },
-  editProfileBtn: {
-    marginTop: Spacing.lg,
-    width: '100%',
-    paddingVertical: 12,
-    borderRadius: Radii.lg,
-    backgroundColor: Colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  editProfileBtnText: {
-    color: Colors.textPrimary,
-    fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '500',
+    marginTop: Spacing.xs,
+    marginBottom: Spacing.md,
   },
   userName: {
     ...Typography.headlineMd,
-    marginTop: Spacing.md,
+    fontSize: 20,
+    fontWeight: '700',
   },
   userEmail: {
     color: Colors.textSecondary,
-    fontSize: 14,
-    marginTop: 2,
-  },
-  userPhone: {
-    color: Colors.textMuted,
     fontSize: 13,
-    marginTop: 2,
+    marginTop: 3,
   },
   statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: Colors.surfaceLight,
     paddingHorizontal: Spacing.md,
-    paddingVertical: 6,
+    paddingVertical: 7,
     borderRadius: Radii.full,
     marginTop: Spacing.md,
     borderWidth: 1,
     borderColor: Colors.border,
+    maxWidth: '90%',
+  },
+  statusPulseDot: {
+    fontSize: 8,
+    marginRight: 6,
   },
   statusText: {
-    color: Colors.primaryLight,
+    color: Colors.textPrimary,
     fontSize: 13,
     fontWeight: '500',
   },
   section: {
     marginBottom: Spacing.xl,
   },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: Spacing.sm,
+    paddingHorizontal: Spacing.xs,
+  },
   sectionHeader: {
     color: Colors.textMuted,
     fontSize: 11,
     fontWeight: '700',
     letterSpacing: 0.8,
-    marginBottom: Spacing.sm,
-    paddingHorizontal: Spacing.xs,
+  },
+  sectionEditBtn: {
+    color: Colors.secondaryLight,
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  cardGroup: {
+    backgroundColor: Colors.surface,
+    borderRadius: Radii.xl,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    overflow: 'hidden',
+  },
+  infoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: 14,
+  },
+  infoLeft: {
+    flex: 1,
+  },
+  infoLabel: {
+    color: Colors.textMuted,
+    fontSize: 11,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+    marginBottom: 2,
+  },
+  infoValue: {
+    color: Colors.textPrimary,
+    fontSize: 15,
+    fontWeight: '500',
+  },
+  infoEditChevron: {
+    color: Colors.textMuted,
+    fontSize: 20,
+    marginLeft: Spacing.sm,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: Colors.border,
+    marginLeft: Spacing.lg,
   },
   settingRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.surface,
-    padding: Spacing.md,
-    borderRadius: Radii.lg,
-    marginBottom: Spacing.sm,
-    borderWidth: 1,
-    borderColor: Colors.border,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 12,
   },
   settingIconContainer: {
     width: 36,
@@ -602,11 +672,11 @@ const styles = StyleSheet.create({
     marginLeft: Spacing.sm,
   },
   logoutContainer: {
-    marginTop: Spacing.md,
+    marginTop: Spacing.sm,
     marginBottom: Spacing.xxl,
   },
   logoutButton: {
-    height: 50,
+    height: 48,
   },
   modalOverlay: {
     flex: 1,
