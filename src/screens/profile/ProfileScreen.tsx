@@ -231,7 +231,7 @@ export default function ProfileScreen({
             <Avatar
               name={user?.full_name || 'Pulse User'}
               imageUrl={user?.profile_image_url}
-              size={88}
+              size={96}
               isOnline={true}
             />
 
@@ -250,6 +250,20 @@ export default function ProfileScreen({
             </TouchableOpacity>
           </View>
 
+          {/* Explicit Change Photo Button */}
+          <TouchableOpacity
+            style={styles.changePhotoBtn}
+            onPress={handlePickAvatar}
+            disabled={isUploadingAvatar}
+            activeOpacity={0.7}
+          >
+            {isUploadingAvatar ? (
+              <ActivityIndicator size="small" color={Colors.secondaryLight} />
+            ) : (
+              <Text style={styles.changePhotoText}>📷 Change Photo</Text>
+            )}
+          </TouchableOpacity>
+
           <Text style={styles.userName}>{user?.full_name || 'Pulse User'}</Text>
           <Text style={styles.userEmail}>{user?.email || 'user@pulse.chat'}</Text>
 
@@ -257,14 +271,19 @@ export default function ProfileScreen({
             <Text style={styles.userPhone}>{user?.phone_number}</Text>
           )}
 
-          <TouchableOpacity
-            style={styles.statusBadge}
-            onPress={handleOpenEditModal}
-            activeOpacity={0.7}
-          >
+          <View style={styles.statusBadge}>
             <Text style={styles.statusText}>
               {user?.status || '⚡ Active on Pulse'}
             </Text>
+          </View>
+
+          {/* Prominent Edit Profile Button */}
+          <TouchableOpacity
+            style={styles.editProfileBtn}
+            onPress={handleOpenEditModal}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.editProfileBtnText}>✏️ Edit Profile Details</Text>
           </TouchableOpacity>
         </View>
 
@@ -467,6 +486,34 @@ const styles = StyleSheet.create({
   },
   cameraIcon: {
     fontSize: 14,
+  },
+  changePhotoBtn: {
+    marginTop: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 6,
+    borderRadius: Radii.full,
+    backgroundColor: Colors.surfaceLight,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  changePhotoText: {
+    color: Colors.secondaryLight,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  editProfileBtn: {
+    marginTop: Spacing.lg,
+    width: '100%',
+    paddingVertical: 12,
+    borderRadius: Radii.lg,
+    backgroundColor: Colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  editProfileBtnText: {
+    color: Colors.textPrimary,
+    fontSize: 14,
+    fontWeight: '700',
   },
   userName: {
     ...Typography.headlineMd,

@@ -276,7 +276,6 @@ export default function ChatListScreen({
         style={styles.fab}
         activeOpacity={0.85}
         onPress={() => {
-          // Open new chat picker or compose
           navigation.navigate('Chat', {
             conversationId: 'new',
             name: 'Sarah Connor',
@@ -286,6 +285,26 @@ export default function ChatListScreen({
       >
         <Text style={styles.fabIcon}>✍️</Text>
       </TouchableOpacity>
+
+      {/* Bottom Navigation Bar */}
+      <View style={styles.bottomNav}>
+        <TouchableOpacity
+          style={styles.bottomNavItem}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.bottomNavIconActive}>💬</Text>
+          <Text style={styles.bottomNavLabelActive}>Chats</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.bottomNavItem}
+          onPress={() => navigation.navigate('Profile')}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.bottomNavIcon}>👤</Text>
+          <Text style={styles.bottomNavLabel}>Profile</Text>
+        </TouchableOpacity>
+      </View>
     </ScreenWrapper>
   );
 }
@@ -454,7 +473,7 @@ const styles = StyleSheet.create({
   },
   fab: {
     position: 'absolute',
-    bottom: 24,
+    bottom: 80,
     right: 24,
     width: 56,
     height: 56,
@@ -470,5 +489,39 @@ const styles = StyleSheet.create({
   },
   fabIcon: {
     fontSize: 22,
+  },
+  bottomNav: {
+    flexDirection: 'row',
+    backgroundColor: Colors.surface,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.xl,
+    justifyContent: 'space-around',
+    alignItems: 'center',
+  },
+  bottomNavItem: {
+    alignItems: 'center',
+    paddingVertical: Spacing.xs,
+    paddingHorizontal: Spacing.lg,
+  },
+  bottomNavIcon: {
+    fontSize: 22,
+    opacity: 0.6,
+  },
+  bottomNavIconActive: {
+    fontSize: 22,
+  },
+  bottomNavLabel: {
+    fontSize: 11,
+    color: Colors.textMuted,
+    fontWeight: '500',
+    marginTop: 2,
+  },
+  bottomNavLabelActive: {
+    fontSize: 11,
+    color: Colors.secondaryLight,
+    fontWeight: '700',
+    marginTop: 2,
   },
 });
