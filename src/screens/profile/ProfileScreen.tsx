@@ -20,7 +20,7 @@ import { Colors, Radii, Spacing, Typography } from '../../constants/theme';
 import { AppScreenProps } from '../../navigation/types';
 import { useAppDispatch, useAppSelector } from '../../app/hooks';
 import { logout, setUser } from '../../features/auth/authSlice';
-import { useLogoutApiMutation } from '../../services/authApi';
+import { useGetMeQuery, useLogoutApiMutation } from '../../services/authApi';
 import {
   useGetAvatarUploadUrlMutation,
   useUpdateProfileMutation,
@@ -96,7 +96,15 @@ export default function ProfileScreen({
   navigation,
 }: AppScreenProps<'Profile'>) {
   const dispatch = useAppDispatch();
-  const user = useAppSelector((state) => state.auth.user);
+  const reduxUser = useAppSelector((state) => state.auth.user);
+  const { data: serverUser } = useGetMeQuery();
+  const user = serverUser || reduxUser;
+
+  React.useEffect(() => {
+    if (serverUser) {
+      dispatch(setUser(serverUser));
+    }
+  }, [serverUser, dispatch]);
 
   const [logoutApi, { isLoading: isLoggingOut }] = useLogoutApiMutation();
   const [updateProfileApi, { isLoading: isUpdatingProfile }] =
